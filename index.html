@@ -203,7 +203,7 @@
 
             try {
                 // Gọi API của GitHub để xem nội dung thư mục Storm
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}`;
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/${FOLDER_NAME}`;
                 const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
