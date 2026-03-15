@@ -83,21 +83,24 @@
             <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
         </div>
         
-        <!-- Ảnh hiển thị đầy đủ 100% không bị cắt xén (object-contain) -->
-        <img id="display-img" src="" alt="Storm Memory" class="absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10">
+        <!-- Vùng chứa ảnh: Bọc sát viền ảnh -->
+        <div class="absolute inset-0 flex items-center justify-center p-4 md:p-12 z-10 pointer-events-none">
+            <!-- Ảnh hiển thị đầy đủ, viền bám sát ảnh với hiệu ứng viền trên sáng hơn (border-t-white/70) -->
+            <img id="display-img" src="" alt="Storm Memory" class="max-w-full max-h-full object-contain opacity-0 transition-opacity duration-1000 border-[3px] border-white/10 border-t-white/70 border-l-white/30 rounded-lg md:rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] pointer-events-auto">
+        </div>
         
         <!-- Lớp phủ gradient mỏng ở đáy để dễ nhìn nút bấm -->
         <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/90 to-transparent pointer-events-none z-20"></div>
     </div>
 
     <!-- ================= FLOATING CONTROLS (NÚT VÀ THỜI GIAN) ================= -->
-    <!-- Nút hiển thị liên tục (không biến mất/xuất hiện nữa) -->
-    <div id="controls-container" class="fixed bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 opacity-0 pointer-events-none transition-opacity duration-500">
-        <button onclick="handleNextImage()" class="bg-white hover:bg-zinc-200 text-black px-6 md:px-8 py-3.5 md:py-4 rounded-full text-sm md:text-base font-bold shadow-[0_10px_40px_rgba(0,0,0,0.5)] transition-transform active:scale-95 flex items-center gap-2 pointer-events-auto">
+    <!-- Thêm shrink-0 và whitespace-nowrap để nút không bị bóp méo trên di động -->
+    <div id="controls-container" class="fixed bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center gap-2 md:gap-3 opacity-0 pointer-events-none transition-opacity duration-500 w-[95%] md:w-max">
+        <button onclick="handleNextImage()" class="shrink-0 whitespace-nowrap bg-white hover:bg-zinc-200 text-black px-5 md:px-8 py-3.5 md:py-4 rounded-full text-sm md:text-base font-bold shadow-[0_10px_40px_rgba(0,0,0,0.5)] transition-transform active:scale-95 flex items-center gap-1.5 md:gap-2 pointer-events-auto">
             <span>⏭️</span> Bỏ qua & Đổi ảnh
         </button>
         
-        <div class="bg-black/60 backdrop-blur-xl border border-white/20 px-5 md:px-6 py-3.5 md:py-4 rounded-full flex items-center justify-center shadow-lg pointer-events-auto">
+        <div class="shrink-0 whitespace-nowrap bg-black/60 backdrop-blur-xl border border-white/20 px-5 md:px-6 py-3.5 md:py-4 rounded-full flex items-center justify-center shadow-lg pointer-events-auto">
             <span id="countdown" class="font-mono text-xl md:text-2xl font-bold text-white tracking-tight">25</span>
             <span class="text-zinc-400 text-sm ml-1 font-medium">s</span>
         </div>
@@ -108,7 +111,7 @@
         <div class="text-center transform translate-y-4 transition-transform duration-700" id="end-content">
             <h3 class="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight">Ký ức tạm dừng</h3>
             <p class="text-zinc-400 mb-8 max-w-sm mx-auto px-4">Nhớ tới đây thôi, bước tiếp nào.</p>
-            <button onclick="handleNextImage()" class="bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-bold transition-transform active:scale-95 pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.15)]">
+            <button onclick="handleNextImage()" class="shrink-0 whitespace-nowrap bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-bold transition-transform active:scale-95 pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.15)]">
                 Đi tiếp
             </button>
         </div>
@@ -196,7 +199,7 @@
                 startSession();
             } else {
                 btnStartJourney.innerText = "Đang kết nối...";
-                // Tự động gọi lại startSession khi API load xong (đã xử lý ở trên)
+                // Tự động gọi lại startSession khi API load xong
             }
         }
 
@@ -269,7 +272,7 @@
                 shownHistory.shift(); 
             }
 
-            // --- SỬA LỖI ANIMATION NÚT BẤM KHI ĐỔI ẢNH LIÊN TỤC ---
+            // Sửa lỗi animation nút bấm
             displayImg.classList.remove('opacity-100', 'fade-in'); 
             displayImg.classList.add('opacity-0');
             bgBlurImg.classList.remove('opacity-30');
@@ -295,7 +298,6 @@
                 sessionTimer = setInterval(tickTimer, 1000);
             };
             
-            // Nếu bấm qua ảnh quá nhanh, trình duyệt sẽ tự ngắt load ảnh cũ và chạy ảnh mới
             displayImg.src = selectedImagePath;
             bgBlurImg.src = selectedImagePath;
         }
