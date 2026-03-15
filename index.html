@@ -73,7 +73,11 @@
                     <p class="text-sm text-zinc-400 mb-6 text-center max-w-xs">Hệ thống đang gọi API để lấy danh sách ảnh ngẫu nhiên trong thư mục.</p>
                 </div>
 
-                <img id="display-img" src="" alt="Storm Memory" class="hidden absolute inset-0 w-full h-full object-contain z-0">
+                <!-- Thay đổi thành thẻ img hỗ trợ load tốt hơn -->
+                <div id="img-loading" class="hidden absolute inset-0 flex items-center justify-center z-10">
+                    <span class="animate-spin text-2xl">⏳</span>
+                </div>
+                <img id="display-img" src="" alt="Storm Memory" class="hidden absolute inset-0 w-full h-full object-contain z-0 transition-opacity duration-300">
                 
                 <div id="progress-container" class="hidden absolute top-0 left-0 w-full h-1 bg-zinc-800/50 z-20">
                     <div id="progress-bar" class="h-full bg-white w-full progress-bar-transition shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
@@ -145,15 +149,17 @@
     <script>
         // --- 1. CONFIGURATION (Giao tiếp với GitHub API) ---
         
-        const GITHUB_USERNAME = 'tuanly2k4-rgb'; 
+        const GITHUB_USERNAME = 'tuanly2k4-rgb'; // <-- Đã sửa đúng chuẩn
         const GITHUB_REPO_NAME = 'StormNTB';      
         const FOLDER_NAME = 'STORM';                    
         
         let imagePaths = []; 
+        let currentImage = ""; // Lưu vết ảnh hiện tại để tránh random trùng lặp
         const badWordsFilter = ['ngu', 'dốt', 'chó', 'đm', 'vkl', 'địt', 'lồn', 'cặc', 'fuck', 'shit', 'rác rưởi', 'ngu học', 'xấu'];
 
         // --- 2. STATE VARIABLES ---
         let sessionTimer = null;
+        let startDelayTimeout = null;
         let timeLeft = 30;
         let isSessionActive = false;
         let comments = [];
@@ -166,6 +172,7 @@
         const countdownSpan = document.getElementById('countdown');
         const emptyState = document.getElementById('empty-state');
         const displayImg = document.getElementById('display-img');
+        const imgLoading = document.getElementById('img-loading');
         const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
         const endOverlay = document.getElementById('end-overlay');
@@ -188,21 +195,17 @@
             }
             renderComments();
 
-            // Chạy API GitHub để tự lấy danh sách ảnh
             await fetchImagesFromGitHubAPI();
         }
 
-        // THUẬT TOÁN QUÉT FOLDER TỰ ĐỘNG BẰNG GITHUB API (DEBUG MODE)
         async function fetchImagesFromGitHubAPI() {
             try {
-                // Thêm tham số ?ref=main để API trỏ thẳng vào nhánh main của bạn
                 const timestamp = new Date().getTime();
                 const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main&t=${timestamp}`;
                 
                 const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
-                    // LẤY MÃ LỖI GỐC CỦA GITHUB ĐỂ IN RA MÀN HÌNH
                     const errorData = await response.json();
                     throw new Error(`[Lỗi ${response.status}] ${errorData.message}`);
                 }
@@ -221,7 +224,6 @@
 
             } catch (error) {
                 console.error("Lỗi API GitHub:", error);
-                // BẮT LỖI VÀ IN THẲNG RA GIAO DIỆN
                 showConfigError(error.message);
             }
         }
@@ -249,7 +251,6 @@
             scanStatus.innerText = "Lỗi API";
             scanStatus.className = "bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-[9px] normal-case border border-red-500/30";
             
-            // UI IN LỖI CHI TIẾT
             emptyState.innerHTML = `
                 <div class="w-20 h-20 rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-5 shadow-inner border border-red-500/30">
                     <span class="text-4xl">⚠️</span>
@@ -274,35 +275,58 @@
         function startSession() {
             if (imagePaths.length === 0) return;
 
+            // XÓA ĐẾM NGƯỢC CŨ (CHỐNG LỖI CHỒNG CHÉO TIMER DO BẤM NHANH)
             clearInterval(sessionTimer);
+            if (startDelayTimeout) clearTimeout(startDelayTimeout);
+
             timeLeft = 30;
             isSessionActive = true;
 
-            const selectedImagePath = imagePaths[Math.floor(Math.random() * imagePaths.length)];
+            // THUẬT TOÁN CHỐNG RANDOM TRÙNG LẶP LIÊN TIẾP
+            let selectedImagePath;
+            if (imagePaths.length > 1) {
+                do {
+                    selectedImagePath = imagePaths[Math.floor(Math.random() * imagePaths.length)];
+                } while (selectedImagePath === currentImage);
+            } else {
+                selectedImagePath = imagePaths[0];
+            }
+            currentImage = selectedImagePath; // Lưu vết
 
+            // GIAO DIỆN
             emptyState.classList.add('hidden');
             endOverlay.classList.add('hidden');
             scanStatus.innerText = `Đang phát ngẫu nhiên`;
             
-            displayImg.src = selectedImagePath;
-            displayImg.classList.remove('hidden', 'image-reveal');
-            void displayImg.offsetWidth;
-            displayImg.classList.add('image-reveal');
+            // XỬ LÝ ẢNH
+            displayImg.classList.add('hidden', 'opacity-0');
+            displayImg.classList.remove('image-reveal');
+            imgLoading.classList.remove('hidden');
 
+            displayImg.onload = function() {
+                imgLoading.classList.add('hidden');
+                displayImg.classList.remove('hidden', 'opacity-0');
+                displayImg.classList.add('image-reveal');
+            };
+            displayImg.src = selectedImagePath;
+
+            // CẬP NHẬT NÚT VÀ ĐỒNG HỒ
             btnText.innerText = "Bỏ qua & Đổi ảnh";
             btnIcon.innerText = "⏭️";
             timerDisplay.classList.remove('hidden');
             countdownSpan.innerText = timeLeft;
             
+            // RESET PROGRESS BAR
             progressContainer.classList.remove('hidden');
-            progressBar.style.width = '100%';
             progressBar.style.transition = 'none';
+            progressBar.style.width = '100%';
             
             commentInput.disabled = false;
             btnSubmitCmt.disabled = false;
             commentInput.placeholder = "Viết cảm nghĩ của bạn...";
 
-            setTimeout(() => {
+            // KHỞI ĐỘNG TIMER MỚI (Debounce 50ms để CSS nhận thay đổi)
+            startDelayTimeout = setTimeout(() => {
                 progressBar.style.transition = 'width 1s linear';
                 sessionTimer = setInterval(tickTimer, 1000);
             }, 50);
