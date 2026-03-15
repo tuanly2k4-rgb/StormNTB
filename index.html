@@ -188,28 +188,23 @@
             }
             renderComments();
 
-            // Chạy API GitHub
+            // Chạy API GitHub để tự lấy danh sách ảnh
             await fetchImagesFromGitHubAPI();
         }
 
-        // THUẬT TOÁN QUÉT FOLDER TỰ ĐỘNG BẰNG GITHUB API (ĐÃ NÂNG CẤP BÁO LỖI)
+        // THUẬT TOÁN QUÉT FOLDER TỰ ĐỘNG BẰNG GITHUB API (DEBUG MODE)
         async function fetchImagesFromGitHubAPI() {
             try {
                 // Thêm tham số ?ref=main để API trỏ thẳng vào nhánh main của bạn
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main`;
+                const timestamp = new Date().getTime();
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main&t=${timestamp}`;
+                
                 const response = await fetch(apiUrl);
                 
-                // KIỂM TRA LỖI CHI TIẾT
-                if (response.status === 404) {
-                    throw new Error("LỖI 404: Không thể đọc dữ liệu. Kho lưu trữ của bạn đang cài đặt ở chế độ PRIVATE (Riêng tư). Hãy vào Settings của Repo để đổi sang PUBLIC.");
-                }
-                
-                if (response.status === 403) {
-                    throw new Error("LỖI 403: Bạn đã F5 tải lại trang quá 60 lần. GitHub đã tạm khóa IP của bạn. Vui lòng chờ 1 tiếng hoặc kết nối mạng Wi-Fi khác.");
-                }
-
                 if (!response.ok) {
-                    throw new Error(`LỖI ${response.status}: Kết nối bị từ chối.`);
+                    // LẤY MÃ LỖI GỐC CỦA GITHUB ĐỂ IN RA MÀN HÌNH
+                    const errorData = await response.json();
+                    throw new Error(`[Lỗi ${response.status}] ${errorData.message}`);
                 }
 
                 const data = await response.json();
@@ -226,6 +221,7 @@
 
             } catch (error) {
                 console.error("Lỗi API GitHub:", error);
+                // BẮT LỖI VÀ IN THẲNG RA GIAO DIỆN
                 showConfigError(error.message);
             }
         }
@@ -253,17 +249,21 @@
             scanStatus.innerText = "Lỗi API";
             scanStatus.className = "bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-[9px] normal-case border border-red-500/30";
             
+            // UI IN LỖI CHI TIẾT
             emptyState.innerHTML = `
                 <div class="w-20 h-20 rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-5 shadow-inner border border-red-500/30">
                     <span class="text-4xl">⚠️</span>
                 </div>
-                <h3 class="text-white font-bold text-lg mb-2 text-red-400">Không thể tải ảnh</h3>
-                <div class="text-sm text-zinc-300 mb-6 text-center max-w-md px-4 leading-relaxed bg-red-500/10 p-4 rounded-xl border border-red-500/20">
-                    <p>${msg}</p>
+                <h3 class="text-white font-bold text-lg mb-2 text-red-400">Không thể kết nối API</h3>
+                <div class="text-sm text-zinc-300 mb-6 w-full max-w-md px-4 leading-relaxed">
+                    <div class="bg-red-500/10 p-4 rounded-xl border border-red-500/20 break-words text-left font-mono text-xs text-red-300">
+                        Chi tiết lỗi: <br>
+                        ${msg}
+                    </div>
                 </div>
             `;
 
-            btnText.innerText = "Bị chặn";
+            btnText.innerText = "Bị chặn kết nối";
             btnIcon.innerText = "🔒";
         }
 
