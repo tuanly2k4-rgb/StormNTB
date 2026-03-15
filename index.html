@@ -145,12 +145,11 @@
     <script>
         // --- 1. CONFIGURATION (Giao tiếp với GitHub API) ---
         
-        // ⚠️ BẠN CHỈ CẦN ĐIỀN ĐÚNG 2 THÔNG TIN NÀY:
-        const GITHUB_USERNAME = 'tuanly2k4'; // VD: 'nguyenvana'
-        const GITHUB_REPO_NAME = 'StormNTB';      // VD: 'storm-project'
-        const FOLDER_NAME = 'STORM';                    // Tên folder chứa ảnh
+        const GITHUB_USERNAME = 'tuanly2k4'; 
+        const GITHUB_REPO_NAME = 'StormNTB';      
+        const FOLDER_NAME = 'STORM';                    
         
-        let imagePaths = []; // Web sẽ tự động nạp mảng này bằng API
+        let imagePaths = []; 
         const badWordsFilter = ['ngu', 'dốt', 'chó', 'đm', 'vkl', 'địt', 'lồn', 'cặc', 'fuck', 'shit', 'rác rưởi', 'ngu học', 'xấu'];
 
         // --- 2. STATE VARIABLES ---
@@ -195,15 +194,15 @@
 
         // THUẬT TOÁN QUÉT FOLDER TỰ ĐỘNG BẰNG GITHUB API
         async function fetchImagesFromGitHubAPI() {
-            // Kiểm tra xem dev đã cấu hình chưa
-            if (GITHUB_USERNAME === 'your-github-username' || GITHUB_REPO_NAME === 'your-repo-name') {
-                showConfigError("Vui lòng mở file code và điền GITHUB_USERNAME và GITHUB_REPO_NAME ở dòng 147.");
+            if (!GITHUB_USERNAME || !GITHUB_REPO_NAME) {
+                showConfigError("Vui lòng cấu hình Username và Repo Name.");
                 return;
             }
 
             try {
-                // Gọi API của GitHub để xem nội dung thư mục Storm
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/${FOLDER_NAME}`;
+                // Thêm timestamp vào cuối URL để tránh trình duyệt lưu cache (luôn tải file mới nhất)
+                const timestamp = new Date().getTime();
+                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?t=${timestamp}`;
                 const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
@@ -212,12 +211,10 @@
 
                 const data = await response.json();
                 
-                // Lọc ra các file ảnh và lấy link download trực tiếp (raw url)
                 imagePaths = data
                     .filter(item => item.type === 'file' && item.name.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i))
-                    .map(item => item.download_url); // Dùng download_url để hiển thị ảnh ngay lập tức
+                    .map(item => item.download_url);
                 
-                // Kiểm tra kết quả
                 if (imagePaths.length > 0) {
                     setupSuccessUI();
                 } else {
@@ -267,7 +264,6 @@
             btnIcon.innerText = "🔒";
         }
 
-        // Handle Main Button Click
         function handleMainAction() {
             startSession();
         }
@@ -275,37 +271,30 @@
         function startSession() {
             if (imagePaths.length === 0) return;
 
-            // Reset & Start
             clearInterval(sessionTimer);
             timeLeft = 30;
             isSessionActive = true;
 
-            // RANDOM ẢNH TỪ MẢNG VỪA QUÉT ĐƯỢC BẰNG API
             const selectedImagePath = imagePaths[Math.floor(Math.random() * imagePaths.length)];
 
-            // UI Updates
             emptyState.classList.add('hidden');
             endOverlay.classList.add('hidden');
             scanStatus.innerText = `Đang phát ngẫu nhiên`;
             
-            // Render Image
             displayImg.src = selectedImagePath;
             displayImg.classList.remove('hidden', 'image-reveal');
-            void displayImg.offsetWidth; // trigger reflow
+            void displayImg.offsetWidth;
             displayImg.classList.add('image-reveal');
 
-            // Button & Timer
             btnText.innerText = "Bỏ qua & Đổi ảnh";
             btnIcon.innerText = "⏭️";
             timerDisplay.classList.remove('hidden');
             countdownSpan.innerText = timeLeft;
             
-            // Progress Bar
             progressContainer.classList.remove('hidden');
             progressBar.style.width = '100%';
             progressBar.style.transition = 'none';
             
-            // Enable Inputs
             commentInput.disabled = false;
             btnSubmitCmt.disabled = false;
             commentInput.placeholder = "Viết cảm nghĩ của bạn...";
@@ -430,3 +419,5 @@
     </script>
 </body>
 </html>
+
+
