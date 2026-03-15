@@ -7,196 +7,159 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap');
         
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #09090b; /* zinc-950 */
-            color: #f4f4f5; /* zinc-100 */
-            background-image: radial-gradient(circle at 50% 0%, #18181b 0%, #09090b 80%);
-            min-height: 100vh;
-            overflow-x: hidden;
+            background-color: #000000;
+            color: #ffffff;
+            overflow: hidden; /* Khóa cuộn trang, biến web thành dạng App Fullscreen */
             -webkit-tap-highlight-color: transparent;
         }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
 
-        .fade-in-up { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .image-reveal { animation: imageReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
+        /* Animations */
+        .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .fade-in { animation: fadeIn 1s ease-out forwards; }
+        
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes imageReveal {
-            from { opacity: 0; transform: scale(0.97); filter: blur(5px); }
-            to { opacity: 1; transform: scale(1); filter: blur(0); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(1.02); }
+            to { opacity: 1; transform: scale(1); }
         }
-
-        .progress-bar-transition { transition: width 1s linear; }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
     </style>
 </head>
-<body class="w-full">
+<body class="w-full h-[100dvh] relative bg-black">
 
-    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
-
-    <div class="max-w-[1400px] mx-auto w-full flex flex-col lg:flex-row lg:h-[100dvh] lg:overflow-hidden lg:p-4 xl:p-6 gap-4 lg:gap-6">
-        
-        <!-- ================= LEFT COLUMN: IMAGE & CONTROLS ================= -->
-        <div class="w-full lg:w-[60%] xl:w-[65%] flex flex-col gap-4 px-4 pt-6 lg:p-0 lg:h-full shrink-0 relative">
-            
-            <header class="text-center lg:text-left z-10">
-                <p class="text-zinc-500 font-semibold tracking-widest text-[10px] md:text-xs uppercase mb-1 flex justify-center lg:justify-start items-center gap-2">
-                    Dự án lưu trữ
-                    <span id="scan-status" class="bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full text-[9px] normal-case border border-indigo-500/30 animate-pulse">Đang kết nối API...</span>
-                </p>
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold tracking-tight text-white mb-2 leading-tight">
-                    STORM 2022<span class="text-zinc-600">-</span>2025
-                </h1>
-                <p class="text-zinc-400 text-sm max-w-md mx-auto lg:mx-0">Nhấn bắt đầu để gợi lại một ký ức ngẫu nhiên từ kho lưu trữ.</p>
-            </header>
-
-            <div id="image-frame" class="relative bg-zinc-900/50 rounded-[2rem] border border-white/5 shadow-2xl overflow-hidden aspect-[4/3] md:aspect-video lg:aspect-auto lg:flex-1 flex items-center justify-center group">
-                
-                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent z-10 pointer-events-none"></div>
-
-                <!-- Empty/Loading State -->
-                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 p-6 z-20 bg-zinc-950/40 backdrop-blur-sm transition-all duration-300">
-                    <div class="w-20 h-20 rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-5 shadow-inner border border-white/10 animate-pulse">
-                        <span class="text-4xl">📡</span>
-                    </div>
-                    <h3 class="text-white font-bold text-lg mb-2">Đang quét Github...</h3>
-                    <p class="text-sm text-zinc-400 mb-6 text-center max-w-xs">Hệ thống đang gọi API để lấy danh sách ảnh ngẫu nhiên trong thư mục.</p>
-                </div>
-
-                <!-- Thay đổi thành thẻ img hỗ trợ load tốt hơn -->
-                <div id="img-loading" class="hidden absolute inset-0 flex items-center justify-center z-10">
-                    <span class="animate-spin text-2xl">⏳</span>
-                </div>
-                <img id="display-img" src="" alt="Storm Memory" class="hidden absolute inset-0 w-full h-full object-contain z-0 transition-opacity duration-300">
-                
-                <div id="progress-container" class="hidden absolute top-0 left-0 w-full h-1 bg-zinc-800/50 z-20">
-                    <div id="progress-bar" class="h-full bg-white w-full progress-bar-transition shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
-                </div>
-
-                <div id="end-overlay" class="hidden absolute inset-0 bg-zinc-950/80 backdrop-blur-md flex flex-col items-center justify-center z-30 transition-all duration-300">
-                    <div class="bg-zinc-900/80 p-6 rounded-3xl border border-white/10 text-center max-w-[80%] fade-in-up">
-                        <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </div>
-                        <h2 class="text-xl font-bold text-white mb-1">Đã hết 30 giây</h2>
-                        <p class="text-sm text-zinc-400">Phiên cảm nhận cho ký ức này đã khép lại.</p>
-                    </div>
-                </div>
-
-                <!-- Floating Control Bar -->
-                <div class="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center bg-zinc-800/80 backdrop-blur-xl rounded-full p-1.5 border border-white/10 shadow-2xl transition-all duration-300 w-max">
-                    <button id="btn-main" onclick="handleMainAction()" disabled class="bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:hover:bg-zinc-800 text-zinc-950 px-5 md:px-6 py-2.5 md:py-3 rounded-full text-sm md:text-base font-bold transition-transform active:scale-95 flex items-center gap-2">
-                        <span id="btn-icon" class="animate-spin inline-block">⏳</span> 
-                        <span id="btn-text">Đang đồng bộ...</span>
-                    </button>
-                    
-                    <div id="timer-display" class="hidden px-4 flex items-center justify-center min-w-[60px]">
-                        <span id="countdown" class="font-mono text-lg md:text-xl font-bold text-white tracking-tight">30</span>
-                        <span class="text-zinc-400 text-sm ml-0.5">s</span>
-                    </div>
-                </div>
-            </div>
+    <!-- ================= WELCOME OVERLAY ================= -->
+    <div id="welcome-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center px-6 transition-opacity duration-1000">
+        <div class="max-w-lg text-center fade-in-up flex flex-col items-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-8 leading-snug">
+                Hi, chào mừng đến với<br>album của Dượng
+            </h1>
+            <button id="btn-start-journey" onclick="startJourney()" class="bg-white hover:bg-zinc-200 text-black px-10 py-3.5 rounded-full font-bold text-lg transition-transform active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.15)]">
+                Bắt đầu
+            </button>
         </div>
+    </div>
 
-        <!-- ================= RIGHT COLUMN: COMMENTS ================= -->
-        <div class="w-full lg:w-[40%] xl:w-[35%] flex flex-col flex-1 h-[55vh] min-h-[400px] lg:h-full bg-zinc-900/40 lg:rounded-[2rem] border-t lg:border border-white/5 relative overflow-hidden mt-4 lg:mt-0">
-            
-            <div class="p-4 md:p-5 border-b border-white/5 bg-zinc-900/60 backdrop-blur-md shrink-0 flex items-center justify-between z-10">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-white/5">
-                        <svg class="w-4 h-4 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-sm md:text-base text-white">Góc Cảm Xúc</h3>
-                        <p class="text-[10px] md:text-xs text-zinc-400">Tự động lọc từ ngữ tiêu cực</p>
-                    </div>
-                </div>
-                <span class="flex h-2 w-2 relative">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-            </div>
-            
-            <div id="comment-list" class="flex-1 overflow-y-auto p-4 md:p-5 flex flex-col gap-4 custom-scrollbar pb-safe">
-                <!-- Comments injected via JS -->
-            </div>
+    <!-- ================= QUOTE OVERLAY (Hiện sau mỗi 10 ảnh) ================= -->
+    <div id="quote-overlay" class="fixed inset-0 z-[70] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center px-8 transition-opacity duration-1000 opacity-0 pointer-events-none">
+        <div class="max-w-2xl text-center transform translate-y-4 transition-transform duration-1000" id="quote-content">
+            <span class="text-4xl md:text-5xl text-zinc-600 font-serif mb-4 block">"</span>
+            <p class="text-xl md:text-3xl font-serif italic text-white leading-relaxed mb-8" id="quote-text"></p>
+            <p class="text-sm md:text-base text-zinc-500 font-bold tracking-[0.2em] uppercase mb-12" id="quote-author"></p>
+            <button onclick="dismissQuoteAndContinue()" class="bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-bold transition-transform active:scale-95 pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.15)]">
+                Tiếp tục hành trình
+            </button>
+        </div>
+    </div>
 
-            <div class="p-3 md:p-4 bg-zinc-900 border-t border-white/5 shrink-0 pb-safe z-10">
-                <form id="comment-form" onsubmit="handleCommentSubmit(event)" class="relative flex items-center">
-                    <input type="text" id="comment-input" disabled 
-                        class="w-full bg-zinc-950 border border-zinc-800 text-white rounded-full pl-5 pr-12 py-3 text-sm focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all placeholder-zinc-600 shadow-inner"
-                        placeholder="Khởi động phiên để bình luận..." autocomplete="off">
-                    
-                    <button type="submit" id="btn-submit-cmt" disabled
-                        class="absolute right-1.5 w-9 h-9 rounded-full bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 text-black flex items-center justify-center transition-all">
-                        <svg class="w-4 h-4 transform translate-x-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </form>
-            </div>
+    <!-- ================= TOP LEFT BANNER ================= -->
+    <div class="fixed top-4 left-4 md:top-8 md:left-8 z-40 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 pointer-events-none">
+        <p class="text-[9px] md:text-[10px] text-zinc-400 font-bold tracking-[0.2em] uppercase mb-0.5">Dự án lưu trữ</p>
+        <h2 class="text-white font-extrabold text-sm md:text-base tracking-widest">STORM</h2>
+    </div>
+
+    <!-- ================= BOTTOM RIGHT NOTE ================= -->
+    <div class="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40 pointer-events-none opacity-50">
+        <p class="text-[10px] md:text-xs font-mono text-zinc-500 tracking-[0.2em]">#randompic</p>
+    </div>
+
+    <!-- ================= FULLSCREEN IMAGE ================= -->
+    <div class="fixed inset-0 z-0 bg-black flex items-center justify-center overflow-hidden">
+        <!-- Ảnh làm mờ phía sau (Background Blur) giúp ảnh ngang không bị viền đen trống trải -->
+        <img id="bg-blur-img" src="" class="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-0 transition-opacity duration-1000 z-0 pointer-events-none">
+        
+        <!-- Vòng xoay tải ảnh ẩn -->
+        <div id="img-loading" class="hidden absolute inset-0 flex items-center justify-center z-10">
+            <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+        </div>
+        
+        <!-- Ảnh hiển thị đầy đủ 100% không bị cắt xén (object-contain) -->
+        <img id="display-img" src="" alt="Storm Memory" class="absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10">
+        
+        <!-- Lớp phủ gradient mỏng ở đáy để dễ nhìn nút bấm -->
+        <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/90 to-transparent pointer-events-none z-20"></div>
+    </div>
+
+    <!-- ================= FLOATING CONTROLS (NÚT VÀ THỜI GIAN) ================= -->
+    <!-- Nút hiển thị liên tục (không biến mất/xuất hiện nữa) -->
+    <div id="controls-container" class="fixed bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 opacity-0 pointer-events-none transition-opacity duration-500">
+        <button onclick="handleNextImage()" class="bg-white hover:bg-zinc-200 text-black px-6 md:px-8 py-3.5 md:py-4 rounded-full text-sm md:text-base font-bold shadow-[0_10px_40px_rgba(0,0,0,0.5)] transition-transform active:scale-95 flex items-center gap-2 pointer-events-auto">
+            <span>⏭️</span> Bỏ qua & Đổi ảnh
+        </button>
+        
+        <div class="bg-black/60 backdrop-blur-xl border border-white/20 px-5 md:px-6 py-3.5 md:py-4 rounded-full flex items-center justify-center shadow-lg pointer-events-auto">
+            <span id="countdown" class="font-mono text-xl md:text-2xl font-bold text-white tracking-tight">25</span>
+            <span class="text-zinc-400 text-sm ml-1 font-medium">s</span>
+        </div>
+    </div>
+
+    <!-- ================= END SESSION OVERLAY ================= -->
+    <div id="end-overlay" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-lg flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-700">
+        <div class="text-center transform translate-y-4 transition-transform duration-700" id="end-content">
+            <h3 class="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight">Ký ức tạm dừng</h3>
+            <p class="text-zinc-400 mb-8 max-w-sm mx-auto px-4">Nhớ tới đây thôi, bước tiếp nào.</p>
+            <button onclick="handleNextImage()" class="bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-bold transition-transform active:scale-95 pointer-events-auto shadow-[0_0_30px_rgba(255,255,255,0.15)]">
+                Đi tiếp
+            </button>
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION (Giao tiếp với GitHub API) ---
-        
-        const GITHUB_USERNAME = 'tuanly2k4-rgb'; // <-- Đã sửa đúng chuẩn
+        // --- 1. CẤU HÌNH GITHUB API & QUOTES ---
+        const GITHUB_USERNAME = 'tuanly2k4-rgb'; 
         const GITHUB_REPO_NAME = 'StormNTB';      
         const FOLDER_NAME = 'STORM';                    
         
         let imagePaths = []; 
-        let currentImage = ""; // Lưu vết ảnh hiện tại để tránh random trùng lặp
-        const badWordsFilter = ['ngu', 'dốt', 'chó', 'đm', 'vkl', 'địt', 'lồn', 'cặc', 'fuck', 'shit', 'rác rưởi', 'ngu học', 'xấu'];
+        let shownHistory = []; // Lưu 150 tấm chống trùng
+        let imageCount = 0;    // Biến đếm số lượng ảnh đã xem
 
-        // --- 2. STATE VARIABLES ---
+        // Danh sách các câu quotes về ký ức
+        const memoryQuotes = [
+            { text: "Ký ức là cuốn nhật ký mà tất cả chúng ta đều mang theo bên mình.", author: "Oscar Wilde" },
+            { text: "Chúng ta không nhớ ngày tháng, chúng ta nhớ những khoảnh khắc.", author: "Cesare Pavese" },
+            { text: "Quá khứ không bao giờ chết. Thậm chí nó còn chưa từng trôi qua.", author: "William Faulkner" },
+            { text: "Có những khoảnh khắc, chỉ khi trở thành ký ức, ta mới biết nó đáng giá nhường nào.", author: "Dr. Seuss" },
+            { text: "Ký ức giống như một kho báu giấu kín, càng đào sâu, càng thấy rực rỡ.", author: "Khuyết danh" },
+            { text: "Người ta có thể lấy đi của bạn mọi thứ, nhưng không ai có thể lấy đi những ký ức.", author: "Khuyết danh" },
+            { text: "Mọi thứ rồi sẽ trôi qua, chỉ có tình người và ký ức là ở lại.", author: "Tôn Yến Tư" },
+            { text: "Hãy giữ lấy những ký ức, vì chúng ta không thể quay lại ngày hôm qua.", author: "Khuyết danh" },
+            { text: "Điều tồi tệ nhất của ký ức không phải là nỗi đau, mà là sự cô đơn khi nhận ra mình là người duy nhất còn nhớ.", author: "Khuyết danh" },
+            { text: "Ký ức giống như cơn bão, đến đột ngột và cuốn đi mọi thứ đang tĩnh lặng.", author: "Khuyết danh" }
+        ];
+
+        // --- 2. BIẾN TRẠNG THÁI ---
         let sessionTimer = null;
-        let startDelayTimeout = null;
-        let timeLeft = 30;
-        let isSessionActive = false;
-        let comments = [];
+        let timeLeft = 25; 
+        let isApiReady = false;
+        let hasStartedJourney = false;
 
         // --- 3. DOM ELEMENTS ---
-        const btnMain = document.getElementById('btn-main');
-        const btnText = document.getElementById('btn-text');
-        const btnIcon = document.getElementById('btn-icon');
-        const timerDisplay = document.getElementById('timer-display');
-        const countdownSpan = document.getElementById('countdown');
-        const emptyState = document.getElementById('empty-state');
+        const welcomeModal = document.getElementById('welcome-modal');
+        const btnStartJourney = document.getElementById('btn-start-journey');
         const displayImg = document.getElementById('display-img');
+        const bgBlurImg = document.getElementById('bg-blur-img');
         const imgLoading = document.getElementById('img-loading');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
+        const controlsContainer = document.getElementById('controls-container');
+        const countdownSpan = document.getElementById('countdown');
         const endOverlay = document.getElementById('end-overlay');
-        const commentInput = document.getElementById('comment-input');
-        const btnSubmitCmt = document.getElementById('btn-submit-cmt');
-        const commentList = document.getElementById('comment-list');
-        const toastContainer = document.getElementById('toast-container');
-        const scanStatus = document.getElementById('scan-status');
+        const endContent = document.getElementById('end-content');
+        const quoteOverlay = document.getElementById('quote-overlay');
+        const quoteContent = document.getElementById('quote-content');
 
-        // --- 4. CORE FUNCTIONS ---
+        // --- 4. HÀM XỬ LÝ LÕI ---
 
-        async function init() {
-            const savedComments = localStorage.getItem('storm_comments');
-            if (savedComments) {
-                comments = JSON.parse(savedComments);
-            } else {
-                comments = [
-                    { id: 1, text: "Hệ thống lưu trữ đã sẵn sàng...", time: "Hệ thống", isAI: true }
-                ];
-            }
-            renderComments();
-
-            await fetchImagesFromGitHubAPI();
-        }
+        fetchImagesFromGitHubAPI();
 
         async function fetchImagesFromGitHubAPI() {
             try {
@@ -204,11 +167,7 @@
                 const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main&t=${timestamp}`;
                 
                 const response = await fetch(apiUrl);
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`[Lỗi ${response.status}] ${errorData.message}`);
-                }
+                if (!response.ok) return;
 
                 const data = await response.json();
                 
@@ -217,234 +176,149 @@
                     .map(item => item.download_url);
                 
                 if (imagePaths.length > 0) {
-                    setupSuccessUI();
-                } else {
-                    showConfigError("Kết nối thành công nhưng thư mục STORM không có file ảnh hợp lệ nào.");
+                    isApiReady = true;
+                    if (hasStartedJourney) {
+                        startSession();
+                    } else {
+                        btnStartJourney.innerText = "Bắt đầu";
+                    }
                 }
+            } catch (error) {}
+        }
 
-            } catch (error) {
-                console.error("Lỗi API GitHub:", error);
-                showConfigError(error.message);
+        function startJourney() {
+            if (hasStartedJourney) return; // Chống click nhiều lần
+            hasStartedJourney = true;
+
+            if (isApiReady) {
+                welcomeModal.style.opacity = '0';
+                setTimeout(() => { welcomeModal.style.display = 'none'; }, 1000);
+                startSession();
+            } else {
+                btnStartJourney.innerText = "Đang kết nối...";
+                // Tự động gọi lại startSession khi API load xong (đã xử lý ở trên)
             }
         }
 
-        function setupSuccessUI() {
-            btnIcon.classList.remove('animate-spin');
-            scanStatus.innerText = `Đã đồng bộ (${imagePaths.length} ảnh)`;
-            scanStatus.className = "bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-[9px] normal-case border border-emerald-500/30";
-            
-            emptyState.innerHTML = `
-                <div class="w-20 h-20 rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-5 shadow-inner border border-emerald-500/30">
-                    <span class="text-4xl">✅</span>
-                </div>
-                <h3 class="text-white font-bold text-lg mb-2">Đã kết nối dữ liệu</h3>
-                <p class="text-sm text-zinc-400 mb-6 text-center max-w-xs">Hệ thống đã tự động quét và nạp <b>${imagePaths.length}</b> ảnh từ GitHub thành công.</p>
-            `;
-
-            btnMain.disabled = false;
-            btnText.innerText = "Bắt đầu Random";
-            btnIcon.innerText = "🎲";
+        // Hàm chung khi bấm đổi ảnh
+        function handleNextImage() {
+            // Kiểm tra: Nếu đã xem được bội số của 10 ảnh (10, 20, 30...) thì hiện Quote
+            if (imageCount > 0 && imageCount % 10 === 0) {
+                showQuoteScreen();
+            } else {
+                startSession();
+            }
         }
 
-        function showConfigError(msg) {
-            btnIcon.classList.remove('animate-spin');
-            scanStatus.innerText = "Lỗi API";
-            scanStatus.className = "bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full text-[9px] normal-case border border-red-500/30";
+        function showQuoteScreen() {
+            clearInterval(sessionTimer);
+            controlsContainer.classList.add('opacity-0', 'pointer-events-none');
+            endOverlay.classList.add('opacity-0', 'pointer-events-none');
             
-            emptyState.innerHTML = `
-                <div class="w-20 h-20 rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-5 shadow-inner border border-red-500/30">
-                    <span class="text-4xl">⚠️</span>
-                </div>
-                <h3 class="text-white font-bold text-lg mb-2 text-red-400">Không thể kết nối API</h3>
-                <div class="text-sm text-zinc-300 mb-6 w-full max-w-md px-4 leading-relaxed">
-                    <div class="bg-red-500/10 p-4 rounded-xl border border-red-500/20 break-words text-left font-mono text-xs text-red-300">
-                        Chi tiết lỗi: <br>
-                        ${msg}
-                    </div>
-                </div>
-            `;
-
-            btnText.innerText = "Bị chặn kết nối";
-            btnIcon.innerText = "🔒";
+            // Random một câu nói
+            const randomQuote = memoryQuotes[Math.floor(Math.random() * memoryQuotes.length)];
+            document.getElementById('quote-text').innerText = randomQuote.text;
+            document.getElementById('quote-author').innerText = `- ${randomQuote.author} -`;
+            
+            quoteOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                quoteContent.classList.replace('translate-y-4', 'translate-y-0');
+            }, 50);
         }
 
-        function handleMainAction() {
-            startSession();
+        function dismissQuoteAndContinue() {
+            quoteContent.classList.replace('translate-y-0', 'translate-y-4');
+            quoteOverlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            // Đợi mờ đi rồi chiếu ảnh tiếp theo
+            setTimeout(() => {
+                startSession();
+            }, 800);
         }
 
         function startSession() {
             if (imagePaths.length === 0) return;
 
-            // XÓA ĐẾM NGƯỢC CŨ (CHỐNG LỖI CHỒNG CHÉO TIMER DO BẤM NHANH)
+            // Tăng bộ đếm số lượng ảnh đã xem
+            imageCount++;
+
             clearInterval(sessionTimer);
-            if (startDelayTimeout) clearTimeout(startDelayTimeout);
+            timeLeft = 25;
 
-            timeLeft = 30;
-            isSessionActive = true;
-
-            // THUẬT TOÁN CHỐNG RANDOM TRÙNG LẶP LIÊN TIẾP
-            let selectedImagePath;
-            if (imagePaths.length > 1) {
-                do {
-                    selectedImagePath = imagePaths[Math.floor(Math.random() * imagePaths.length)];
-                } while (selectedImagePath === currentImage);
-            } else {
-                selectedImagePath = imagePaths[0];
-            }
-            currentImage = selectedImagePath; // Lưu vết
-
-            // GIAO DIỆN
-            emptyState.classList.add('hidden');
-            endOverlay.classList.add('hidden');
-            scanStatus.innerText = `Đang phát ngẫu nhiên`;
+            // Ẩn Overlay
+            endOverlay.classList.add('opacity-0', 'pointer-events-none');
+            endContent.classList.replace('translate-y-0', 'translate-y-4');
             
-            // XỬ LÝ ẢNH
-            displayImg.classList.add('hidden', 'opacity-0');
-            displayImg.classList.remove('image-reveal');
-            imgLoading.classList.remove('hidden');
-
-            displayImg.onload = function() {
-                imgLoading.classList.add('hidden');
-                displayImg.classList.remove('hidden', 'opacity-0');
-                displayImg.classList.add('image-reveal');
-            };
-            displayImg.src = selectedImagePath;
-
-            // CẬP NHẬT NÚT VÀ ĐỒNG HỒ
-            btnText.innerText = "Bỏ qua & Đổi ảnh";
-            btnIcon.innerText = "⏭️";
-            timerDisplay.classList.remove('hidden');
+            // Hiện lập tức thanh Control
+            controlsContainer.classList.remove('opacity-0', 'pointer-events-none');
             countdownSpan.innerText = timeLeft;
             
-            // RESET PROGRESS BAR
-            progressContainer.classList.remove('hidden');
-            progressBar.style.transition = 'none';
-            progressBar.style.width = '100%';
-            
-            commentInput.disabled = false;
-            btnSubmitCmt.disabled = false;
-            commentInput.placeholder = "Viết cảm nghĩ của bạn...";
+            // Thuật toán chống trùng 150 ảnh
+            const maxHistory = Math.min(150, imagePaths.length - 1);
+            let availablePaths = imagePaths.filter(path => !shownHistory.includes(path));
 
-            // KHỞI ĐỘNG TIMER MỚI (Debounce 50ms để CSS nhận thay đổi)
-            startDelayTimeout = setTimeout(() => {
-                progressBar.style.transition = 'width 1s linear';
+            if (availablePaths.length === 0) {
+                shownHistory = [];
+                availablePaths = [...imagePaths];
+            }
+
+            const selectedImagePath = availablePaths[Math.floor(Math.random() * availablePaths.length)];
+
+            shownHistory.push(selectedImagePath);
+            if (shownHistory.length > maxHistory) {
+                shownHistory.shift(); 
+            }
+
+            // --- SỬA LỖI ANIMATION NÚT BẤM KHI ĐỔI ẢNH LIÊN TỤC ---
+            displayImg.classList.remove('opacity-100', 'fade-in'); 
+            displayImg.classList.add('opacity-0');
+            bgBlurImg.classList.remove('opacity-30');
+            bgBlurImg.classList.add('opacity-0');
+            
+            imgLoading.classList.remove('hidden'); 
+
+            // Khi ảnh tải xong
+            displayImg.onload = function() {
+                imgLoading.classList.add('hidden');
+                
+                // Bắt buộc trình duyệt nhận diện trạng thái opacity-0 trước khi fade-in lại
+                displayImg.classList.remove('opacity-0');
+                requestAnimationFrame(() => {
+                    displayImg.classList.add('opacity-100', 'fade-in'); 
+                });
+                
+                // Hiện ảnh mờ viền (để ảnh ngang nhìn đẹp)
+                bgBlurImg.classList.remove('opacity-0');
+                bgBlurImg.classList.add('opacity-30');
+
+                clearInterval(sessionTimer); // Xóa timer thừa
                 sessionTimer = setInterval(tickTimer, 1000);
-            }, 50);
+            };
+            
+            // Nếu bấm qua ảnh quá nhanh, trình duyệt sẽ tự ngắt load ảnh cũ và chạy ảnh mới
+            displayImg.src = selectedImagePath;
+            bgBlurImg.src = selectedImagePath;
         }
 
         function tickTimer() {
             timeLeft--;
             countdownSpan.innerText = timeLeft;
-            progressBar.style.width = `${(timeLeft / 30) * 100}%`;
 
-            if (timeLeft <= 0) endSession();
+            if (timeLeft <= 0) {
+                endSession();
+            }
         }
 
         function endSession() {
             clearInterval(sessionTimer);
-            isSessionActive = false;
             
-            timerDisplay.classList.add('hidden');
-            progressContainer.classList.add('hidden');
-            btnText.innerText = "Random ảnh mới";
-            btnIcon.innerText = "🔄";
-            scanStatus.innerText = `Sẵn sàng (${imagePaths.length} ảnh)`;
+            controlsContainer.classList.add('opacity-0', 'pointer-events-none');
             
-            commentInput.disabled = true;
-            btnSubmitCmt.disabled = true;
-            commentInput.placeholder = "Hết giờ. Hãy tải ảnh mới...";
-            commentInput.value = '';
-            commentInput.blur(); 
-
-            endOverlay.classList.remove('hidden');
-        }
-
-        function handleCommentSubmit(event) {
-            event.preventDefault();
-            if (!isSessionActive) return;
-
-            const text = commentInput.value.trim();
-            if (!text) return;
-
-            const isNegative = badWordsFilter.some(word => text.toLowerCase().includes(word));
-            
-            if (isNegative) {
-                showToast("Hệ thống đã chặn một từ ngữ không phù hợp.", "error");
-                commentInput.value = '';
-                return;
-            }
-
-            comments.push({
-                id: Date.now(),
-                text: text,
-                time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-            });
-
-            saveComments();
-            renderComments();
-            commentInput.value = '';
-        }
-
-        function saveComments() {
-            if (comments.length > 50) comments = comments.slice(comments.length - 50);
-            localStorage.setItem('storm_comments', JSON.stringify(comments));
-        }
-
-        function renderComments() {
-            if (comments.length === 0) {
-                commentList.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-zinc-600 space-y-2">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                        <span class="text-sm">Chưa có bình luận nào</span>
-                    </div>`;
-                return;
-            }
-
-            commentList.innerHTML = comments.map(cmt => `
-                <div class="flex gap-3 fade-in-up">
-                    <div class="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] shadow-sm mt-1 ${cmt.isAI ? 'bg-indigo-500 text-white' : 'bg-zinc-800 border border-white/10 text-zinc-300'}">
-                        ${cmt.isAI ? '🤖' : '👤'}
-                    </div>
-                    <div class="flex flex-col max-w-[85%]">
-                        <div class="flex items-baseline gap-2 ml-1">
-                            <span class="text-xs font-semibold ${cmt.isAI ? 'text-indigo-400' : 'text-zinc-300'}">
-                                ${cmt.isAI ? 'Hệ thống' : 'Khách ẩn danh'}
-                            </span>
-                            <span class="text-[10px] text-zinc-500">${cmt.time}</span>
-                        </div>
-                        <p class="text-[13px] md:text-sm text-zinc-100 mt-1 bg-zinc-800/80 backdrop-blur-sm px-4 py-2.5 rounded-2xl rounded-tl-sm border border-white/5 shadow-sm break-words leading-relaxed">
-                            ${escapeHTML(cmt.text)}
-                        </p>
-                    </div>
-                </div>
-            `).join('');
-            
-            setTimeout(() => { commentList.scrollTop = commentList.scrollHeight; }, 50);
-        }
-
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-white';
-            const textColor = type === 'error' ? 'text-white' : 'text-zinc-950';
-
-            toast.className = `${bgColor} ${textColor} px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-semibold transform transition-all duration-400 translate-y-[-100%] opacity-0 pointer-events-auto mx-auto w-max max-w-full`;
-            toast.innerHTML = `<span class="break-words">${message}</span>`;
-            toastContainer.appendChild(toast);
-
-            requestAnimationFrame(() => toast.classList.remove('translate-y-[-100%]', 'opacity-0'));
+            endOverlay.classList.remove('opacity-0', 'pointer-events-none');
             setTimeout(() => {
-                toast.classList.add('translate-y-[-100%]', 'opacity-0');
-                setTimeout(() => toast.remove(), 400);
-            }, 3000);
+                endContent.classList.replace('translate-y-4', 'translate-y-0');
+            }, 50);
         }
-
-        init();
     </script>
 </body>
 </html>
-
-
