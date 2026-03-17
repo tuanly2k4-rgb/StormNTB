@@ -78,14 +78,24 @@
         <!-- Ảnh làm mờ phía sau (Background Blur) giúp ảnh ngang không bị viền đen trống trải -->
         <img id="bg-blur-img" src="" class="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-0 transition-opacity duration-1000 z-0 pointer-events-none">
         
-        <!-- Vòng xoay tải ảnh ẩn -->
-        <div id="img-loading" class="hidden absolute inset-0 flex items-center justify-center z-10">
-            <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+        <!-- HIỆU ỨNG TẢI ẢNH (LOADING RADAR) SINH ĐỘNG -->
+        <div id="img-loading" class="hidden absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50 backdrop-blur-sm transition-opacity duration-500">
+            <div class="relative flex items-center justify-center mb-6">
+                <!-- Sóng radar toả ra ngoài -->
+                <div class="absolute w-14 h-14 bg-white/20 rounded-full animate-ping opacity-75"></div>
+                <div class="absolute w-24 h-24 border border-white/20 rounded-full animate-[ping_2s_ease-in-out_infinite] opacity-50"></div>
+                <div class="absolute w-32 h-32 border border-white/5 rounded-full animate-[ping_3s_ease-in-out_infinite] opacity-30"></div>
+                <!-- Core Icon -->
+                <div class="relative z-10 w-14 h-14 bg-zinc-900/90 rounded-full flex items-center justify-center border border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                    <span class="text-2xl animate-pulse">⛈️</span>
+                </div>
+            </div>
+            <p class="text-zinc-300 text-xs md:text-sm font-medium tracking-[0.2em] uppercase animate-pulse">Đang gợi lại ký ức...</p>
         </div>
         
         <!-- Vùng chứa ảnh: Bọc sát viền ảnh -->
         <div class="absolute inset-0 flex items-center justify-center p-4 md:p-12 z-10 pointer-events-none">
-            <!-- Ảnh hiển thị đầy đủ, viền bám sát ảnh với hiệu ứng viền trên sáng hơn (border-t-white/70) -->
+            <!-- Ảnh hiển thị đầy đủ, viền bám sát ảnh với hiệu ứng viền trên sáng hơn -->
             <img id="display-img" src="" alt="Storm Memory" class="max-w-full max-h-full object-contain opacity-0 transition-opacity duration-1000 border-[3px] border-white/10 border-t-white/70 border-l-white/30 rounded-lg md:rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] pointer-events-auto">
         </div>
         
@@ -94,7 +104,6 @@
     </div>
 
     <!-- ================= FLOATING CONTROLS (NÚT VÀ THỜI GIAN) ================= -->
-    <!-- Thêm shrink-0 và whitespace-nowrap để nút không bị bóp méo trên di động -->
     <div id="controls-container" class="fixed bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center gap-2 md:gap-3 opacity-0 pointer-events-none transition-opacity duration-500 w-[95%] md:w-max">
         <button onclick="handleNextImage()" class="shrink-0 whitespace-nowrap bg-white hover:bg-zinc-200 text-black px-5 md:px-8 py-3.5 md:py-4 rounded-full text-sm md:text-base font-bold shadow-[0_10px_40px_rgba(0,0,0,0.5)] transition-transform active:scale-95 flex items-center gap-1.5 md:gap-2 pointer-events-auto">
             <span>⏭️</span> Bỏ qua & Đổi ảnh
@@ -118,14 +127,18 @@
     </div>
 
     <script>
-        // --- 1. CẤU HÌNH GITHUB API & QUOTES ---
+        // --- 1. CẤU HÌNH GITHUB API & CACHE ---
         const GITHUB_USERNAME = 'tuanly2k4-rgb'; 
         const GITHUB_REPO_NAME = 'StormNTB';      
         const FOLDER_NAME = 'STORM';                    
         
+        const CACHE_KEY = 'storm_image_cache';
+        const CACHE_EXPIRY = 12 * 60 * 60 * 1000; // Lưu đệm 12 tiếng để chống lỗi giới hạn API
+
         let imagePaths = []; 
         let shownHistory = []; // Lưu 150 tấm chống trùng
         let imageCount = 0;    // Biến đếm số lượng ảnh đã xem
+        let nextImagePath = ""; // Biến chứa ảnh tải ngầm
 
         // Danh sách các câu quotes về ký ức
         const memoryQuotes = [
@@ -165,32 +178,78 @@
         fetchImagesFromGitHubAPI();
 
         async function fetchImagesFromGitHubAPI() {
-            try {
-                const timestamp = new Date().getTime();
-                const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main&t=${timestamp}`;
-                
-                const response = await fetch(apiUrl);
-                if (!response.ok) return;
-
-                const data = await response.json();
-                
-                imagePaths = data
-                    .filter(item => item.type === 'file' && item.name.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i))
-                    .map(item => item.download_url);
-                
-                if (imagePaths.length > 0) {
+            // 1. Kiểm tra cache trước (Giải quyết triệt để lỗi "Đang kết nối..." do bị giới hạn)
+            const cachedData = localStorage.getItem(CACHE_KEY);
+            let hasValidCache = false;
+            
+            if (cachedData) {
+                const parsed = JSON.parse(cachedData);
+                if (Date.now() - parsed.timestamp < CACHE_EXPIRY && parsed.paths && parsed.paths.length > 0) {
+                    imagePaths = parsed.paths;
                     isApiReady = true;
-                    if (hasStartedJourney) {
-                        startSession();
+                    hasValidCache = true;
+                    if (hasStartedJourney) startSession();
+                    else btnStartJourney.innerText = "Bắt đầu";
+                    prepareNextImage(); // Tải sẵn ảnh
+                }
+            }
+
+            // 2. Nếu không có cache hợp lệ, gọi API
+            if (!hasValidCache) {
+                try {
+                    const timestamp = new Date().getTime();
+                    const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${FOLDER_NAME}?ref=main&t=${timestamp}`;
+                    
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) throw new Error("API Limit");
+
+                    const data = await response.json();
+                    
+                    // Sử dụng CDN jsDelivr tăng tốc load ảnh 
+                    imagePaths = data
+                        .filter(item => item.type === 'file' && item.name.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i))
+                        .map(item => `https://cdn.jsdelivr.net/gh/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}@main/${FOLDER_NAME}/${encodeURIComponent(item.name)}`);
+                    
+                    if (imagePaths.length > 0) {
+                        // Lưu lại danh sách vào trình duyệt
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({
+                            timestamp: Date.now(),
+                            paths: imagePaths
+                        }));
+
+                        isApiReady = true;
+                        if (hasStartedJourney) {
+                            startSession();
+                        } else {
+                            btnStartJourney.innerText = "Bắt đầu";
+                        }
+                        prepareNextImage();
+                    }
+                } catch (error) {
+                    // Nếu API bị chặn nhưng vẫn còn cache cũ (dù hết hạn), vẫn lấy ra dùng tạm
+                    if (cachedData) {
+                        imagePaths = JSON.parse(cachedData).paths;
+                        isApiReady = true;
+                        if (hasStartedJourney) startSession();
+                        else btnStartJourney.innerText = "Bắt đầu";
+                        prepareNextImage();
                     } else {
-                        btnStartJourney.innerText = "Bắt đầu";
+                        // Cung cấp nút thử lại nếu lỗi đường truyền
+                        btnStartJourney.innerText = "Thử lại (Lỗi mạng)";
                     }
                 }
-            } catch (error) {}
+            }
         }
 
         function startJourney() {
             if (hasStartedJourney) return; // Chống click nhiều lần
+            
+            if (btnStartJourney.innerText.includes("Thử lại")) {
+                btnStartJourney.innerText = "Đang kết nối...";
+                fetchImagesFromGitHubAPI();
+                return;
+            }
+
             hasStartedJourney = true;
 
             if (isApiReady) {
@@ -199,13 +258,10 @@
                 startSession();
             } else {
                 btnStartJourney.innerText = "Đang kết nối...";
-                // Tự động gọi lại startSession khi API load xong
             }
         }
 
-        // Hàm chung khi bấm đổi ảnh
         function handleNextImage() {
-            // Kiểm tra: Nếu đã xem được bội số của 10 ảnh (10, 20, 30...) thì hiện Quote
             if (imageCount > 0 && imageCount % 10 === 0) {
                 showQuoteScreen();
             } else {
@@ -218,7 +274,6 @@
             controlsContainer.classList.add('opacity-0', 'pointer-events-none');
             endOverlay.classList.add('opacity-0', 'pointer-events-none');
             
-            // Random một câu nói
             const randomQuote = memoryQuotes[Math.floor(Math.random() * memoryQuotes.length)];
             document.getElementById('quote-text').innerText = randomQuote.text;
             document.getElementById('quote-author').innerText = `- ${randomQuote.author} -`;
@@ -233,30 +288,14 @@
             quoteContent.classList.replace('translate-y-0', 'translate-y-4');
             quoteOverlay.classList.add('opacity-0', 'pointer-events-none');
             
-            // Đợi mờ đi rồi chiếu ảnh tiếp theo
             setTimeout(() => {
                 startSession();
             }, 800);
         }
 
-        function startSession() {
+        // Tải ngầm ảnh tiếp theo để giảm tối đa độ trễ
+        function prepareNextImage() {
             if (imagePaths.length === 0) return;
-
-            // Tăng bộ đếm số lượng ảnh đã xem
-            imageCount++;
-
-            clearInterval(sessionTimer);
-            timeLeft = 25;
-
-            // Ẩn Overlay
-            endOverlay.classList.add('opacity-0', 'pointer-events-none');
-            endContent.classList.replace('translate-y-0', 'translate-y-4');
-            
-            // Hiện lập tức thanh Control
-            controlsContainer.classList.remove('opacity-0', 'pointer-events-none');
-            countdownSpan.innerText = timeLeft;
-            
-            // Thuật toán chống trùng 150 ảnh
             const maxHistory = Math.min(150, imagePaths.length - 1);
             let availablePaths = imagePaths.filter(path => !shownHistory.includes(path));
 
@@ -264,15 +303,45 @@
                 shownHistory = [];
                 availablePaths = [...imagePaths];
             }
+            nextImagePath = availablePaths[Math.floor(Math.random() * availablePaths.length)];
+            
+            const img = new Image();
+            img.src = nextImagePath;
+        }
 
-            const selectedImagePath = availablePaths[Math.floor(Math.random() * availablePaths.length)];
+        function startSession() {
+            if (imagePaths.length === 0) return;
 
+            imageCount++;
+
+            clearInterval(sessionTimer);
+            timeLeft = 25;
+
+            endOverlay.classList.add('opacity-0', 'pointer-events-none');
+            endContent.classList.replace('translate-y-0', 'translate-y-4');
+            
+            controlsContainer.classList.remove('opacity-0', 'pointer-events-none');
+            countdownSpan.innerText = timeLeft;
+            
+            let selectedImagePath = nextImagePath;
+            if (!selectedImagePath) {
+                const maxHistory = Math.min(150, imagePaths.length - 1);
+                let availablePaths = imagePaths.filter(path => !shownHistory.includes(path));
+
+                if (availablePaths.length === 0) {
+                    shownHistory = [];
+                    availablePaths = [...imagePaths];
+                }
+
+                selectedImagePath = availablePaths[Math.floor(Math.random() * availablePaths.length)];
+            }
+
+            const maxHistoryForUpdate = Math.min(150, imagePaths.length - 1);
             shownHistory.push(selectedImagePath);
-            if (shownHistory.length > maxHistory) {
+            if (shownHistory.length > maxHistoryForUpdate) {
                 shownHistory.shift(); 
             }
 
-            // Sửa lỗi animation nút bấm
             displayImg.classList.remove('opacity-100', 'fade-in'); 
             displayImg.classList.add('opacity-0');
             bgBlurImg.classList.remove('opacity-30');
@@ -280,22 +349,26 @@
             
             imgLoading.classList.remove('hidden'); 
 
-            // Khi ảnh tải xong
             displayImg.onload = function() {
                 imgLoading.classList.add('hidden');
                 
-                // Bắt buộc trình duyệt nhận diện trạng thái opacity-0 trước khi fade-in lại
                 displayImg.classList.remove('opacity-0');
                 requestAnimationFrame(() => {
                     displayImg.classList.add('opacity-100', 'fade-in'); 
                 });
                 
-                // Hiện ảnh mờ viền (để ảnh ngang nhìn đẹp)
                 bgBlurImg.classList.remove('opacity-0');
                 bgBlurImg.classList.add('opacity-30');
 
-                clearInterval(sessionTimer); // Xóa timer thừa
+                clearInterval(sessionTimer); 
                 sessionTimer = setInterval(tickTimer, 1000);
+
+                prepareNextImage();
+            };
+
+            displayImg.onerror = function() {
+                prepareNextImage();
+                startSession();
             };
             
             displayImg.src = selectedImagePath;
